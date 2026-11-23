@@ -2,7 +2,7 @@
 
 ## Download for macOS
 
-[Download the installer ZIP from the latest release](https://github.com/SashankUday/quiz-capture/releases/latest). Under **Assets**, choose **Quiz-Capture-macOS.zip**.
+[Download Quiz-Capture-macOS.zip](https://github.com/SashankUday/quiz-capture/releases/latest/download/Quiz-Capture-macOS.zip). This is the installer bundle with Playwright included. The release page also lists the ZIP under **Assets**. [GitHub releases](https://github.com/SashankUday/quiz-capture/releases/latest)
 
 ## Install
 
@@ -35,6 +35,8 @@ test -x "$HOME/Desktop/Start Socrative and Mentimeter Quiz Capture.command"
 The installer stores app files in `~/Library/Application Support/Socrative and Mentimeter Quiz Capture/1.0.0`. The recipient can then open the Desktop launcher and join their own quiz.
 
 ## Run from source
+
+For a Git clone or GitHub source archive, use the commands below. The double-click installer requires the bundled dependencies from the release ZIP.
 
 From the repository root, run the following with Node.js 20 or newer. Quiz Capture uses Google Chrome or a Playwright-managed Chromium browser.
 

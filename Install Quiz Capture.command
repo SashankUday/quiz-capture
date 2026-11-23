@@ -68,6 +68,12 @@ install_quiz_capture() {
     print -u2 "Unzip the complete package and run the installer from the unzipped folder."
     return 1
   fi
+  local dependencies="$package_dir/Resources/Quiz Capture/node_modules"
+  if [[ ! -f "$dependencies/playwright/package.json" || ! -f "$dependencies/playwright-core/package.json" ]]; then
+    print -u2 "Playwright is missing. Download Quiz-Capture-macOS.zip from the GitHub release, unzip it, and run this installer from that folder."
+    print -u2 "https://github.com/SashankUday/quiz-capture/releases/latest/download/Quiz-Capture-macOS.zip"
+    return 1
+  fi
   if [[ -e "$desktop_launcher" || -L "$desktop_launcher" ]]; then
     if [[ -L "$desktop_launcher" ]] || ! /usr/bin/cmp -s "$desktop_launcher" "$launcher_source"; then
       print -u2 "A different file already exists at $desktop_launcher. Move it aside and retry."
