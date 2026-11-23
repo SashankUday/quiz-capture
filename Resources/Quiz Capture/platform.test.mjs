@@ -79,8 +79,6 @@ test('real browser saves PNGs from Socrative and Mentimeter DOM fixtures', {
 }, async (t) => {
   const home = await tempHome(t);
   const channels = process.env.QUIZ_CAPTURE_TEST_BROWSER === 'chromium' ? ['chromium'] : undefined;
-  const browser = await launchBrowser({ headless: !process.env.QUIZ_CAPTURE_TEST_HEADED, channels });
-  t.after(() => browser.close());
   const fixtures = [
     ['https://b.socrative.com/student-v2/quiz', readQuestion,
       '<main><h2 class="text-muted-foreground text-base font-normal">Question 7 of 9 · Multiple Choice</h2><p>Which answer applies?</p></main>',
@@ -90,9 +88,11 @@ test('real browser saves PNGs from Socrative and Mentimeter DOM fixtures', {
       '001-mentimeter.png'],
   ];
   for (const [url, reader, html, expected] of fixtures) {
-    const page = await browser.newPage();
-    const timeout = setTimeout(() => { void page.close().catch(() => {}); }, 10000);
+    const browser = await launchBrowser({ headless: !process.env.QUIZ_CAPTURE_TEST_HEADED, channels });
+    let timeout;
     try {
+      const page = await browser.newPage();
+      timeout = setTimeout(() => { void page.close().catch(() => {}); }, 10000);
       await page.route('**/*', (route) => route.fulfill({ contentType: 'text/html; charset=utf-8', body: html }));
       await page.goto(url);
       assert.ok((await page.evaluate(reader))?.content, 'The reader did not recognise the fixture at ' + url);
@@ -109,7 +109,7 @@ test('real browser saves PNGs from Socrative and Mentimeter DOM fixtures', {
       assert.equal(png.subarray(1, 4).toString(), 'PNG');
     } finally {
       clearTimeout(timeout);
-      await page.close();
+      await browser.close();
     }
   }
 });
