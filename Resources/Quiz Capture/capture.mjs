@@ -2,7 +2,6 @@ import { mkdir, mkdtemp, realpath, rename, rm, writeFile } from 'node:fs/promise
 import { join } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { setTimeout as sleep } from 'node:timers/promises';
-import { pathToFileURL } from 'node:url';
 import { launchBrowser, verifyBrowser } from './browser.mjs';
 import { screenshotRoot, validFolderName } from './paths.mjs';
 import { readQuestion } from './question.mjs';
@@ -159,8 +158,17 @@ async function main() {
   }
 }
 
-const entry = process.argv[1] && await realpath(process.argv[1]).catch(() => null);
-if (entry && import.meta.url === pathToFileURL(entry).href) {
+async function isMain() {
+  if (typeof import.meta.main === 'boolean') return import.meta.main;
+  // Older Node releases lack import.meta.main. Resolve both names so symlinked
+  // and Windows short paths can still identify the CLI entry point.
+  if (!process.argv[1]) return false;
+  const entry = await realpath(process.argv[1]).catch(() => null);
+  const source = await realpath(new URL(import.meta.url));
+  return entry !== null && entry === source;
+}
+
+if (await isMain()) {
   main().catch((error) => {
     console.error(`Quiz Capture stopped. ${error.message}`);
     process.exitCode = 1;
