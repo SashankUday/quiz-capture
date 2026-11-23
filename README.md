@@ -12,6 +12,12 @@
 
 The installer runs for your macOS account and needs no administrator password. Playwright is included. The installer uses Node.js 20 or newer if available and otherwise downloads an official Node.js runtime for this app. It uses Google Chrome if installed in Applications, or downloads Chromium if needed. Downloads require internet access.
 
+If macOS blocks the installer because it can’t verify the developer and you trust the ZIP from this repository, try opening the installer in Finder, then go to **System Settings → Privacy & Security → Open Anyway** and confirm. [Apple’s instructions](https://support.apple.com/en-us/102445)
+
+## Update or reinstall
+
+Close Quiz Capture, download and unzip the latest release, and run its installer. Releases v1.0.0 and v1.0.1 use the same installed app files, so an existing installation of either release is ready to use. If you need to reinstall those files, use **Finder → Go → Go to Folder** to open `~/Library/Application Support/Socrative and Mentimeter Quiz Capture`, move the `1.0.0` folder aside, then rerun the installer. Your screenshots are stored separately in **Desktop → Quiz Screenshots**.
+
 ## Capture a quiz
 
 Choose Socrative or Mentimeter in Terminal, then enter an optional quiz folder name. Join your Socrative room or enter your Mentimeter code in the browser that opens. To use a Mentimeter participation link, paste it into that browser’s address bar. Socrative captures visible question changes and uses the displayed question number. Mentimeter captures visible titled slides as their content changes and names the PNGs in capture order. Terminal shows the full output path when the first screenshot is saved. Close the browser window to stop.
