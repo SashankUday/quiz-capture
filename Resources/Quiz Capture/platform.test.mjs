@@ -81,8 +81,9 @@ test('real browser saves PNGs from Socrative and Mentimeter DOM fixtures', {
     const page = await browser.newPage();
     const timeout = setTimeout(() => { void page.close().catch(() => {}); }, 10000);
     try {
-      await page.route('**/*', (route) => route.fulfill({ contentType: 'text/html', body: html }));
+      await page.route('**/*', (route) => route.fulfill({ contentType: 'text/html; charset=utf-8', body: html }));
       await page.goto(url);
+      assert.ok((await page.evaluate(reader))?.content, 'The reader did not recognise the fixture at ' + url);
       const capture = await watchQuiz(page, {
         root: join(home, expected),
         reader,

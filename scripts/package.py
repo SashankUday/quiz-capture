@@ -39,7 +39,7 @@ def bundle_runtime(platform_name, arch, output, work):
     # curl's retry also covers transient release-server errors in the CI matrix.
     subprocess.run(['curl', '--proto', '=https', '--proto-redir', '=https',
                     '--fail', '--silent', '--show-error', '--location', '--retry', '3',
-                    '--max-time', '180', '--output', str(archive), url], check=True)
+                    '--connect-timeout', '20', '--max-time', '360', '--output', str(archive), url], check=True)
     with archive.open('rb') as stream:
         digest = hashlib.sha256()
         for chunk in iter(lambda: stream.read(1024 * 1024), b''):

@@ -165,7 +165,7 @@ async function install() {
 
     for (const [index, file] of launchers.entries()) await writeLauncher(file, previousLaunchers[index]);
     const selector = join(staging, 'current');
-    await writeFile(selector, version + '\n', { flag: 'wx' });
+    await writeFile(selector, version + (process.platform === 'win32' ? '\r\n' : '\n'), { flag: 'wx' });
     if (current === undefined) await link(selector, currentPath);
     else await rename(selector, currentPath);
 
