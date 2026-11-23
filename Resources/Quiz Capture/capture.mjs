@@ -1,10 +1,10 @@
-import { access, mkdir, mkdtemp, rename, rm, writeFile } from 'node:fs/promises';
-import { homedir } from 'node:os';
+import { mkdir, mkdtemp, rename, rm, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { pathToFileURL } from 'node:url';
-import { chromium } from 'playwright';
+import { launchBrowser, verifyBrowser } from './browser.mjs';
+import { screenshotRoot, validFolderName } from './paths.mjs';
 import { readQuestion } from './question.mjs';
 import { readMentiSlide } from './mentimeter.mjs';
 
@@ -12,24 +12,11 @@ const platforms = {
   socrative: { url: 'https://gosocrative.com/', reader: readQuestion },
   mentimeter: { url: 'https://www.menti.com/', reader: readMentiSlide },
 };
-const chromeExecutable = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
-const screenshotsRoot = join(homedir(), 'Desktop', 'Quiz Screenshots');
 const pollInterval = 125;
 const settleTime = 250;
 
-async function exists(path) {
-  return access(path).then(() => true, () => false);
-}
-
-async function browserOptions() {
-  const options = { headless: false, chromiumSandbox: true };
-  if (await exists(chromium.executablePath())) return options;
-  if (await exists(chromeExecutable)) return { ...options, channel: 'chrome' };
-  throw new Error('Chromium is missing. Run Start Quiz Capture.command to install it.');
-}
-
 export async function watchQuiz(page, {
-  root = screenshotsRoot,
+  root,
   reader = readQuestion,
   poll = pollInterval,
   settle = settleTime,
@@ -81,6 +68,7 @@ export async function watchQuiz(page, {
         const after = await sample();
         if (after?.number === question.number && after?.content === question.content) {
           if (!directory) {
+            root ??= await screenshotRoot();
             await mkdir(root, { recursive: true });
             const started = new Date().toISOString().replace(/[:.]/g, '-');
             directory = await mkdtemp(join(root, `${started}-`));
@@ -132,7 +120,7 @@ async function choosePlatform() {
   }
 }
 
-async function chooseScreenshotRoot() {
+async function chooseScreenshotRoot(screenshotsRoot) {
   if (!process.stdin.isTTY) return screenshotsRoot;
 
   const terminal = createInterface({ input: process.stdin, output: process.stdout });
@@ -140,8 +128,7 @@ async function chooseScreenshotRoot() {
     while (true) {
       const folder = (await terminal.question('Quiz folder name (Return for a timestamped folder): ')).trim();
       if (!folder) return screenshotsRoot;
-      if (folder !== '.' && folder !== '..' && !/[\\/:\x00-\x1f\x7f]/.test(folder) &&
-          Buffer.byteLength(folder) <= 255) {
+      if (validFolderName(folder)) {
         return join(screenshotsRoot, folder);
       }
       console.log('Enter a single folder name, such as Lab Med Endocrinology.');
@@ -152,10 +139,15 @@ async function chooseScreenshotRoot() {
 }
 
 async function main() {
+  if (process.argv[2] === '--verify') {
+    await verifyBrowser();
+    console.log('Quiz Capture browser verification passed.');
+    return;
+  }
   const { url, reader } = await choosePlatform();
-  const root = await chooseScreenshotRoot();
+  const root = await chooseScreenshotRoot(await screenshotRoot());
   console.log(`This run will save its screenshots in a new folder under ${root}`);
-  const browser = await chromium.launch(await browserOptions());
+  const browser = await launchBrowser();
   try {
     const page = await browser.newPage({ viewport: null, locale: 'en-GB' });
     page.on('crash', () => page.close().catch(() => {}));
@@ -169,8 +161,7 @@ async function main() {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   main().catch((error) => {
-    const summary = error.message.split('\n')[0];
-    console.error(`Quiz Capture stopped. ${summary}`);
+    console.error(`Quiz Capture stopped. ${error.message}`);
     process.exitCode = 1;
   });
 }

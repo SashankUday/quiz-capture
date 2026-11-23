@@ -1,20 +1,14 @@
 #!/bin/zsh
-
-app_dir="$HOME/Library/Application Support/Socrative and Mentimeter Quiz Capture/1.0.0"
-node_bin="$app_dir/runtime/bin/node"
-
-start_capture() {
-  if [[ ! -x "$node_bin" ]]; then
-    print -u2 "The Node.js runtime is unavailable. Install Node.js 20 or newer if it was removed."
-    return 1
-  fi
-  cd -- "$app_dir/Quiz Capture" || return 1
-  "$node_bin" capture.mjs "$@"
-}
-
-start_capture "$@"
-capture_exit_code=$?
-if (( capture_exit_code != 0 )) && [[ -t 0 ]]; then
+support_dir="${QUIZ_CAPTURE_INSTALL_ROOT:-$HOME/Library/Application Support/Socrative and Mentimeter Quiz Capture}"
+version=$(<"$support_dir/current")
+if [[ "$version" != <->.<->.<-> ]]; then
+  print -u2 "Quiz Capture installation is incomplete. Run the installer again."
+  exit 1
+fi
+app_dir="$support_dir/$version"
+"$app_dir/node" "$app_dir/Quiz Capture/capture.mjs" "$@"
+result=$?
+if (( result != 0 )) && [[ -t 0 && "$1" != --verify ]]; then
   read -r '?Press Return to close this window. '
 fi
-exit "$capture_exit_code"
+exit "$result"

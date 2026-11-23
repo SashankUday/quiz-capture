@@ -1,0 +1,99 @@
+name: Build and test Quiz Capture
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Optional release tag (for example v1.1.0). Leave blank to build and test only.'
+        type: string
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: ${{ matrix.label }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            label: macOS
+            asset: Quiz-Capture-macOS.zip
+          - os: windows-2022
+            label: Windows
+            asset: Quiz-Capture-Windows.zip
+          - os: ubuntu-22.04
+            label: Linux
+            asset: Quiz-Capture-Linux.tar.gz
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: '24.22.3'
+          cache: npm
+          cache-dependency-path: 'Resources/Quiz Capture/package-lock.json'
+      - name: Install pinned dependencies
+        working-directory: 'Resources/Quiz Capture'
+        run: npm ci --omit=optional --ignore-scripts --no-audit
+      - name: Install Chromium and system libraries on Linux
+        if: runner.os == 'Linux'
+        working-directory: 'Resources/Quiz Capture'
+        run: node node_modules/playwright/cli.js install --with-deps --no-shell chromium
+      - name: Install Chromium on macOS and Windows
+        if: runner.os != 'Linux'
+        working-directory: 'Resources/Quiz Capture'
+        run: node node_modules/playwright/cli.js install --no-shell chromium
+      - name: Test capture with managed Chromium
+        working-directory: 'Resources/Quiz Capture'
+        env:
+          QUIZ_CAPTURE_TEST_BROWSER: chromium
+        run: npm test
+      - name: Test headed capture on Linux
+        if: runner.os == 'Linux'
+        working-directory: 'Resources/Quiz Capture'
+        env:
+          QUIZ_CAPTURE_TEST_BROWSER: chromium
+          QUIZ_CAPTURE_TEST_HEADED: '1'
+        run: xvfb-run -a node --test platform.test.mjs
+      - name: Build release archive
+        run: python scripts/package.py
+      - name: Test release installer, launcher, reinstall and upgrade
+        run: python scripts/test-package.py
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ${{ matrix.label }}-release
+          path: dist/${{ matrix.asset }}
+          if-no-files-found: error
+
+  publish:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.release_tag != ''
+    needs: package
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          pattern: '*-release'
+          path: dist
+          merge-multiple: true
+      - name: Publish the tested packages
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          expected_tag=$(node -p '"v" + require("./Resources/Quiz Capture/package.json").version')
+          if [ "$RELEASE_TAG" != "$expected_tag" ]; then
+            echo "Use the app version as the release tag ($expected_tag)." >&2
+            exit 1
+          fi
+          gh release create "$RELEASE_TAG" --target "$GITHUB_SHA" --generate-notes \
+            dist/Quiz-Capture-macOS.zip dist/Quiz-Capture-Windows.zip dist/Quiz-Capture-Linux.tar.gz
