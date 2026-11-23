@@ -1,5 +1,5 @@
-import { mkdir, mkdtemp, rename, rm, writeFile } from 'node:fs/promises';
-import { join, resolve } from 'node:path';
+import { mkdir, mkdtemp, realpath, rename, rm, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { pathToFileURL } from 'node:url';
@@ -159,7 +159,8 @@ async function main() {
   }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
+const entry = process.argv[1] && await realpath(process.argv[1]).catch(() => null);
+if (entry && import.meta.url === pathToFileURL(entry).href) {
   main().catch((error) => {
     console.error(`Quiz Capture stopped. ${error.message}`);
     process.exitCode = 1;

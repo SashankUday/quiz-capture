@@ -1,8 +1,11 @@
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { execFile } from 'node:child_process';
+import { mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
+import { promisify } from 'node:util';
 import { launchBrowser } from './browser.mjs';
 import { watchQuiz } from './capture.mjs';
 import { readMentiSlide } from './mentimeter.mjs';
@@ -60,6 +63,15 @@ test('browser discovery prefers Chrome and falls back without turning off the sa
   assert.ok(calls.every((call) => call.chromiumSandbox && !call.headless));
   await assert.rejects(launchBrowser({ engine: { async launch() { throw new Error('No usable sandbox'); } } }),
     /No usable sandbox/);
+});
+
+test('launching the CLI through a redirected directory still runs the entry point', async (t) => {
+  const home = await tempHome(t);
+  const redirected = join(home, 'Redirected App');
+  const app = fileURLToPath(new URL('./', import.meta.url));
+  await symlink(app, redirected, process.platform === 'win32' ? 'junction' : 'dir');
+  await assert.rejects(promisify(execFile)(process.execPath, [join(redirected, 'capture.mjs'), 'invalid-platform']),
+    { code: 1, stderr: /Choose socrative or mentimeter/ });
 });
 
 test('real browser saves PNGs from Socrative and Mentimeter DOM fixtures', {

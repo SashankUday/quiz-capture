@@ -184,7 +184,8 @@ async function checkInstalledBrowser(runtime, capture) {
   const { execFile } = await import('node:child_process');
   const { promisify } = await import('node:util');
   try {
-    await promisify(execFile)(runtime, [capture, '--verify'], { timeout: 45000, windowsHide: true });
+    const { stdout } = await promisify(execFile)(runtime, [capture, '--verify'], { timeout: 45000, windowsHide: true });
+    if (!stdout.includes('Quiz Capture browser verification passed.')) throw new Error('Browser verification produced no result.');
   } catch (error) {
     throw new Error('The installed app could not start. ' + (error.stderr || error.message));
   }
