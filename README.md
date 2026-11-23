@@ -26,16 +26,15 @@ Find the files in **Desktop → Quiz Screenshots**. Each run gets its own timest
 
 ## Install with a terminal or an agent
 
-Give your agent the complete ZIP and ask it to install Socrative and Mentimeter Quiz Capture on your Mac. The installer is a readable shell script. From the extracted **Socrative and Mentimeter Quiz Capture** directory, run:
+Give your agent this repository URL and ask it to run the following on your Mac under your regular macOS account. The command downloads the release ZIP, extracts it, runs the installer, and verifies the Desktop launcher.
 
 ```sh
-/bin/zsh "./Install Quiz Capture.command"
-```
-
-Use the recipient's regular macOS account. For an automated installation, run the same command with standard input disconnected so any failure returns an exit code. On success, verify that the Desktop launcher exists and is executable:
-
-```sh
-test -x "$HOME/Desktop/Start Socrative and Mentimeter Quiz Capture.command"
+quiz_capture_tmp="$(mktemp -d "${TMPDIR:-/tmp}/quiz-capture.XXXXXXXX")" &&
+  /usr/bin/curl -fL -o "$quiz_capture_tmp/Quiz-Capture-macOS.zip" \
+    https://github.com/SashankUday/quiz-capture/releases/latest/download/Quiz-Capture-macOS.zip &&
+  /usr/bin/unzip -q "$quiz_capture_tmp/Quiz-Capture-macOS.zip" -d "$quiz_capture_tmp" &&
+  /bin/zsh "$quiz_capture_tmp/Socrative and Mentimeter Quiz Capture/Install Quiz Capture.command" </dev/null &&
+  test -x "$HOME/Desktop/Start Socrative and Mentimeter Quiz Capture.command"
 ```
 
 The installer stores app files in `~/Library/Application Support/Socrative and Mentimeter Quiz Capture/1.0.0`. The recipient can then open the Desktop launcher and join their own quiz.
@@ -55,3 +54,7 @@ node capture.mjs
 ```
 
 The release ZIP bundles Playwright for the installer.
+
+## Versioning future releases
+
+For a release that changes the installed app, give the app a new version directory. Have the installer finish staging and checking the new version before switching the Desktop launcher to it. Replace the launcher only if it can be identified as one this installer previously installed. Retain the previous version for rollback and test upgrades from v1.0.1. Documentation-only releases can reuse the installed app version.
