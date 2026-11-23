@@ -1,60 +1,112 @@
-# Socrative and Mentimeter Quiz Capture for macOS
+# Quiz Capture
 
-## Download for macOS
+Quiz Capture watches the Socrative or Mentimeter participant window and saves a PNG when the question changes. It runs locally and uses your own quiz code or participation link.
 
-[Download Quiz-Capture-macOS.zip](https://github.com/SashankUday/quiz-capture/releases/latest/download/Quiz-Capture-macOS.zip). This is the installer bundle with Playwright included. The release page also lists the ZIP under **Assets**. [GitHub releases](https://github.com/SashankUday/quiz-capture/releases/latest)
+## Download and install
 
-## Install
+| Platform | Download | Open after extracting |
+| --- | --- | --- |
+| macOS | [Quiz-Capture-macOS.zip](https://github.com/SashankUday/quiz-capture/releases/latest/download/Quiz-Capture-macOS.zip) | Double-click **Install Quiz Capture.command**. Start it from the **Start Socrative and Mentimeter Quiz Capture** Desktop launcher. |
+| Windows | [Quiz-Capture-Windows.zip](https://github.com/SashankUday/quiz-capture/releases/latest/download/Quiz-Capture-Windows.zip) | Choose **Extract All**, then double-click **Install Quiz Capture.cmd**. Open **Start Quiz Capture** on your Desktop. |
+| Linux | [Quiz-Capture-Linux.tar.gz](https://github.com/SashankUday/quiz-capture/releases/latest/download/Quiz-Capture-Linux.tar.gz) | Extract the archive, then right-click **Install Quiz Capture.sh** and choose **Run as a Program** if your file manager offers it. Open **Quiz Capture** from your applications menu. |
 
-1. Double-click the ZIP to unzip it and open the **Socrative and Mentimeter Quiz Capture** folder.
-2. Double-click **Install Quiz Capture.command**. Wait for **Installed**.
-3. Double-click **Start Socrative and Mentimeter Quiz Capture.command** on your Desktop whenever you want to capture a quiz.
+The packages target 64-bit Intel/AMD and ARM. Use macOS 14 or newer, Windows 11, or a graphical Linux desktop on Ubuntu 22.04/24.04 or Debian 12/13. On Windows 10, try it with current Google Chrome installed. Windows 10 is outside Playwright’s published desktop support and compatibility has not been verified. [Playwright system requirements](https://playwright.dev/docs/intro#system-requirements) · [Chrome system requirements](https://support.google.com/chrome/a/answer/7100626)
 
-The installer runs for your macOS account and needs no administrator password. Playwright is included. The installer uses Node.js 20 or newer if available and otherwise downloads an official Node.js runtime for this app. It uses Google Chrome if installed in Applications, or downloads Chromium if needed. Downloads require internet access.
-
-If macOS blocks the installer because it can’t verify the developer and you trust the ZIP from this repository, try opening the installer in Finder, then go to **System Settings → Privacy & Security → Open Anyway** and confirm. [Apple’s instructions](https://support.apple.com/en-us/102445)
-
-## Update or reinstall
-
-Close Quiz Capture, download and unzip the latest release, and run its installer. Releases v1.0.0 and v1.0.1 use the same installed app files, so an existing installation of either release is ready to use. If you need to reinstall those files, use **Finder → Go → Go to Folder** to open `~/Library/Application Support/Socrative and Mentimeter Quiz Capture`, move the `1.0.0` folder aside, then rerun the installer. Your screenshots are stored separately in **Desktop → Quiz Screenshots**.
+Install under your regular user account. Node.js and Playwright are included. The installer checks for Google Chrome first and downloads managed Chromium if needed. Internet access may be needed for that download and is required to join quizzes.
 
 ## Capture a quiz
 
-Choose Socrative or Mentimeter in Terminal, then enter an optional quiz folder name. Join your Socrative room or enter your Mentimeter code in the browser that opens. To use a Mentimeter participation link, paste it into that browser’s address bar. Socrative captures visible question changes and uses the displayed question number. Mentimeter captures visible titled slides as their content changes and names the PNGs in capture order. Terminal shows the full output path when the first screenshot is saved. Close the browser window to stop.
+Choose **Socrative** or **Mentimeter** in the launcher, then enter an optional quiz folder name. Enter your join code or paste your participation link into the browser that opens. Close the browser window to stop.
 
-Find the files in **Desktop → Quiz Screenshots**. Each run gets its own timestamped folder. If you provided a name, the run folder is inside that named folder.
+Look in **Desktop → Quiz Screenshots**. Each run has its own timestamped folder, nested under the quiz name if you entered one. Quiz Capture uses the redirected Desktop on Windows and the XDG Desktop on Linux. If the Desktop is unavailable, look in **Quiz Screenshots** in your home folder. Set the absolute `QUIZ_CAPTURE_SCREENSHOTS` environment variable to choose another output location.
 
-## Install with a terminal or an agent
+## Install from a terminal or with an AI agent
 
-Give your agent this repository URL and ask it to run the following on your Mac under your regular macOS account. The command downloads the release ZIP, extracts it, runs the installer, and verifies the Desktop launcher.
+Give the agent this repository URL and have it run the commands for your OS as your regular user. A GitHub account and a Git clone are unnecessary. Stop if a command returns a nonzero exit code. The verification command opens Chromium or Chrome headlessly and checks that it can take a screenshot.
+
+### macOS or Linux
 
 ```sh
-quiz_capture_tmp="$(mktemp -d "${TMPDIR:-/tmp}/quiz-capture.XXXXXXXX")" &&
-  /usr/bin/curl -fL -o "$quiz_capture_tmp/Quiz-Capture-macOS.zip" \
-    https://github.com/SashankUday/quiz-capture/releases/latest/download/Quiz-Capture-macOS.zip &&
-  /usr/bin/unzip -q "$quiz_capture_tmp/Quiz-Capture-macOS.zip" -d "$quiz_capture_tmp" &&
-  /bin/zsh "$quiz_capture_tmp/Socrative and Mentimeter Quiz Capture/Install Quiz Capture.command" </dev/null &&
-  test -x "$HOME/Desktop/Start Socrative and Mentimeter Quiz Capture.command"
+(
+  set -eu
+  quiz_tmp="$(mktemp -d "${TMPDIR:-/tmp}/quiz-capture.XXXXXXXX")"
+  base=https://github.com/SashankUday/quiz-capture/releases/latest/download
+  case "$(uname -s)" in
+    Darwin)
+      curl -fL "$base/Quiz-Capture-macOS.zip" -o "$quiz_tmp/quiz.zip"
+      unzip -q "$quiz_tmp/quiz.zip" -d "$quiz_tmp"
+      installer="Install Quiz Capture.command"
+      launcher="$HOME/Desktop/Start Socrative and Mentimeter Quiz Capture.command"
+      ;;
+    Linux)
+      curl -fL "$base/Quiz-Capture-Linux.tar.gz" -o "$quiz_tmp/quiz.tar.gz"
+      tar -xzf "$quiz_tmp/quiz.tar.gz" -C "$quiz_tmp"
+      installer="Install Quiz Capture.sh"
+      launcher="${XDG_DATA_HOME:-$HOME/.local/share}/quiz-capture/quiz-capture"
+      ;;
+    *) exit 1 ;;
+  esac
+  "$quiz_tmp/Socrative and Mentimeter Quiz Capture/$installer" --non-interactive </dev/null
+  "$launcher" --verify
+)
 ```
 
-The installer stores app files in `~/Library/Application Support/Socrative and Mentimeter Quiz Capture/1.0.0`. The recipient can then open the Desktop launcher and join their own quiz.
+Run the launcher again without `--verify` to start capture. On Linux with a file manager that only opens scripts as text, open a terminal in the extracted folder and run `./"Install Quiz Capture.sh"`.
 
-## Run from source
+### Windows PowerShell
 
-For a Git clone or GitHub source archive, use the commands below. The double-click installer requires the bundled dependencies from the release ZIP.
+```powershell
+$ErrorActionPreference = 'Stop'
+$quizTmp = Join-Path ([IO.Path]::GetTempPath()) ('quiz-capture-' + [guid]::NewGuid())
+New-Item -ItemType Directory $quizTmp | Out-Null
+$zip = Join-Path $quizTmp 'Quiz-Capture-Windows.zip'
+$uri = 'https://github.com/SashankUday/quiz-capture/releases/latest/download/Quiz-Capture-Windows.zip'
+curl.exe -fL -o $zip $uri
+if ($LASTEXITCODE -ne 0) { throw 'Quiz Capture download failed.' }
+Expand-Archive -LiteralPath $zip -DestinationPath $quizTmp
+& (Join-Path $quizTmp 'Socrative and Mentimeter Quiz Capture\Install Quiz Capture.cmd') --non-interactive
+if ($LASTEXITCODE -ne 0) { throw 'Quiz Capture installation failed.' }
+$desktop = [Environment]::GetFolderPath('DesktopDirectory')
+& (Join-Path $desktop 'Start Quiz Capture.cmd') --verify
+if ($LASTEXITCODE -ne 0) { throw 'Quiz Capture browser verification failed.' }
+```
 
-From the repository root, run the following with Node.js 20 or newer. Quiz Capture uses Google Chrome or a Playwright-managed Chromium browser.
+To capture, open the Desktop launcher without `--verify`.
+
+## Troubleshooting
+
+- **macOS blocks the installer.** If you trust the download, try opening it in Finder, then use **System Settings → Privacy & Security → Open Anyway**. [Apple’s instructions](https://support.apple.com/en-us/102445)
+- **Windows blocks the installer.** Use the official release ZIP, extract it completely, and check with your administrator if a managed device blocks it. The batch installer uses the bundled runtime without changing PowerShell execution policy.
+- **Linux reports missing libraries.** On Ubuntu/Debian, run `./"Install Quiz Capture.sh" --install-system-deps` from the extracted folder. Playwright may ask for administrator authorization to install system packages. Run the script as your own user.
+- **Linux reports a browser sandbox error.** Try your distro’s supported Chrome setup. On Ubuntu 24.04 and later, your administrator may need a browser-specific AppArmor profile for downloaded Chromium. Quiz Capture keeps the Chromium sandbox enabled. [Ubuntu’s AppArmor guidance](https://documentation.ubuntu.com/release-notes/24.04/#unprivileged-user-namespace-restrictions)
+- **Linux reports a missing display.** Launch from your graphical desktop session. A headless server can run `--verify` but cannot show the quiz browser.
+- **Installer reports a different launcher already exists.** Move that item aside and rerun the installer. If a previous installation was interrupted and no installer is running, remove the empty `.install-lock` directory under the app data folder and retry.
+
+## Update or uninstall
+
+To update, close Quiz Capture and run the installer from the latest release. It validates the new version before selecting it, retains the previous app version, and reuses the same launcher. Existing macOS v1.0.0/v1.0.1 release launchers are recognised.
+
+To uninstall, close Quiz Capture and remove its launcher and application folder. Screenshots are stored separately.
+
+| Platform | App folder | Launcher |
+| --- | --- | --- |
+| macOS | `~/Library/Application Support/Socrative and Mentimeter Quiz Capture` | **Start Socrative and Mentimeter Quiz Capture.command** on the Desktop |
+| Windows | `%LOCALAPPDATA%\Quiz Capture` | **Start Quiz Capture.cmd** on the Desktop |
+| Linux | `${XDG_DATA_HOME:-~/.local/share}/quiz-capture` | `quiz-capture.desktop` under the `applications` directory in the same data home |
+
+To reinstall damaged app files, move the app folder aside and run the installer again. Browser downloads live in the shared Playwright cache.
+
+## Run from source or build a package
+
+From a Git clone, use Node.js 22 or 24 in **Resources/Quiz Capture**.
 
 ```sh
-cd "Resources/Quiz Capture"
-npm ci
+npm ci --omit=optional --ignore-scripts
 npm test
-# If Google Chrome is unavailable, run: npx playwright install chromium --no-shell
-node capture.mjs
+npx playwright install chromium --no-shell  # if Chrome is unavailable
+npm start
 ```
 
-The release ZIP bundles Playwright for the installer.
+Run `npm start -- --verify` for a browser check. On Linux, use `npx playwright install-deps chromium` if you need system libraries. To build the archive for your OS, run `python scripts/package.py` from the repository root after `npm ci`. The packaging script verifies the official Node.js runtime downloads against pinned checksums.
 
-## Versioning future releases
-
-For a release that changes the installed app, give the app a new version directory. Have the installer finish staging and checking the new version before switching the Desktop launcher to it. Replace the launcher only if it can be identified as one this installer previously installed. Retain the previous version for rollback and test upgrades from v1.0.1. Documentation-only releases can reuse the installed app version.
+GitHub Actions builds and smoke-tests each platform archive and uploads it as a workflow artifact. Publishing requires an explicit workflow dispatch on `main` with the release tag matching the app version. Bump the version in both package manifests when changing the installed files.
