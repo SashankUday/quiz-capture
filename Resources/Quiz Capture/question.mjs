@@ -20,7 +20,7 @@ export function readQuestion() {
     '.questionText', '.questionPrompt', '#question-text',
   ].join(', ');
   const panelSelector = [
-    '[data-question-id]', '[data-testid="question-content"]',
+    '[data-question-id]', '[data-testid="question-content"]', 'article[aria-label^="Question " i]',
     '[data-testid="question-card"]', '.question-content', '.question-card',
   ].join(', ');
   const numberSelector = [
@@ -29,16 +29,20 @@ export function readQuestion() {
     '.question-counter', '.question-index', '.questionIndex',
   ].join(', ');
   const currentSelector = '[aria-current="step"], [aria-current="true"], [aria-current="page"], [aria-selected="true"]';
-  const labeledNumber = /^(?:question\s*#?\s*)?([1-9]\d{0,4})\s*(?:of|\/)\s*([1-9]\d{0,4})(?:\s*[·•]\s*[a-z][a-z\s/&-]*)?$/i;
+  const labeledNumber = /^(?:question\s*#?\s*)?([1-9]\d{0,4})\s*(?:of|\/)\s*([1-9]\d{0,4})(?:\s*[·•]\s*[a-z0-9][a-z0-9\s/&-]*)*$/i;
   const questionNumber = /^question\s*#?\s*([1-9]\d{0,4})\s*[:.]?$/i;
   const bareNumber = /^#?\s*([1-9]\d{0,4})[.:]?$/;
-  const studentHeading = 'h2.text-muted-foreground.text-base.font-normal';
+  // Socrative varies what follows the counter ("· Multiple Choice", "· 1 point", ...),
+  // but the header always starts with "Question X of Y".
+  const questionProgress = /^question\s*#?\s*([1-9]\d{0,4})\s*of\s*([1-9]\d{0,4})(?!\d)/i;
 
   // Use Socrative's displayed question heading ahead of pagination markers.
-  const headings = [...document.querySelectorAll(studentHeading)]
-    .filter(visible)
-    .map((element) => ({ element, progress: textOf(element).match(labeledNumber) }))
-    .filter(({ progress }) => progress && Number(progress[1]) <= Number(progress[2]));
+  const headings = [...document.querySelectorAll(`${heading}, p, span, div, strong, b, header`)]
+    .filter((element) => element.textContent.length <= 200 && !element.closest(control) && visible(element))
+    .map((element) => ({ element, progress: textOf(element).match(questionProgress) }))
+    .filter(({ progress }) => progress && Number(progress[1]) <= Number(progress[2]))
+    // Keep the innermost element that carries the counter, not its wrappers.
+    .filter(({ element }, _, all) => !all.some((other) => other.element !== element && element.contains(other.element)));
 
   // Only treat a selected navigation control as a number if the control is numeric
   // or explicitly labelled as a question.
@@ -82,7 +86,7 @@ export function readQuestion() {
   const explicitPrompts = [...region.querySelectorAll(promptSelector)].filter(visible);
   const possiblePrompts = explicitPrompts.length > 0
     ? explicitPrompts
-    : [...region.querySelectorAll(`${heading}, p, div:not(:has(div, p, ${heading}))`)]
+    : [...region.querySelectorAll(`${heading}, p, div:not(:has(div, p, ${heading})), img`)]
       .filter((element) => visible(element) && !element.closest(`nav, footer, ${control}`) &&
         (!element.closest('header, aside') || element.closest('header, aside') === markerSection) &&
         (element.contains(marker) ||
@@ -95,10 +99,11 @@ export function readQuestion() {
   };
   const prompt = possiblePrompts.find((element) => {
     const text = promptText(element);
-    return !marker.contains(element) && !element.closest('[aria-busy="true"], [role="status"]') &&
+    return !marker.contains(element) && !questionProgress.test(textOf(element)) &&
+      !element.closest('[aria-busy="true"], [role="status"]') &&
       !/^(?:loading(?: question)?[.…\s]*|multiple choice|true\s*(?:\/|or)\s*false|short answer|numeric)$/i.test(text) &&
       ((text && !labeledNumber.test(text) && !questionNumber.test(text) && !bareNumber.test(text)) ||
-        element.querySelector('img, math, svg[aria-label]'));
+        element.matches('img') || element.querySelector('img, math, svg[aria-label]'));
   });
   if (!prompt) return { number, waitingFor: 'question body' };
 
