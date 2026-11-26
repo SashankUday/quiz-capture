@@ -20,6 +20,7 @@ export async function watchQuiz(page, {
   poll = pollInterval,
   settle = settleTime,
   log = console.log,
+  bodyFallback = 2000,
 } = {}) {
   let lastSaved;
   let candidate;
@@ -27,10 +28,23 @@ export async function watchQuiz(page, {
   let sequence = 1;
   let directory;
   let reportedWait;
+  let bodyWait;
+
+  // If the question number is visible but its text cannot be found (for example
+  // after a Socrative layout change), save the page anyway after a short wait.
+  function withFallback(question) {
+    if (question?.waitingFor !== 'question body') {
+      bodyWait = undefined;
+      return question;
+    }
+    if (bodyWait?.number !== question.number) bodyWait = { number: question.number, since: performance.now() };
+    if (performance.now() - bodyWait.since < bodyFallback) return question;
+    return { number: question.number, content: `unread-question-${question.number}` };
+  }
 
   async function sample() {
     try {
-      return await page.evaluate(reader);
+      return withFallback(await page.evaluate(reader));
     } catch (error) {
       // The quiz can replace the document between two polls.
       if (page.isClosed() || /Execution context was destroyed|Cannot find context with specified id/.test(error.message)) {
